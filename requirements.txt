@@ -1,0 +1,14 @@
+gpt4all
+langchain
+google-generativeai
+pydantic
+python-dotenv
+streamlit
+langchain-core
+langchain-google-genai
+langchain-huggingface
+langchain-text-splitters
+langchain-chroma
+langgraph
+pysqlite3-binary
+
