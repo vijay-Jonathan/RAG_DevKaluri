@@ -11,4 +11,6 @@ langchain-text-splitters
 langchain-chroma
 langgraph
 pysqlite3-binary
+fastapi
+uvicorn[standard]
 
