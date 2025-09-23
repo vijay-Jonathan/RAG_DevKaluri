@@ -13,4 +13,5 @@ langgraph
 pysqlite3-binary
 fastapi
 uvicorn[standard]
+zipp
 

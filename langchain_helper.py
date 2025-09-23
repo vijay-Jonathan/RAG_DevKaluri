@@ -4,6 +4,11 @@ import shutil
 from typing import Sequence
 from typing_extensions import Annotated, TypedDict
 
+# Disable ChromaDB telemetry to prevent telemetry errors
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY_IMPL"] = "none"
+
 # Environment and API configuration
 from dotenv import load_dotenv
 
@@ -32,6 +37,14 @@ gpt4all_embeddings = GPT4AllEmbeddings(
     model_name="all-MiniLM-L6-v2.gguf2.f16.gguf",
     gpt4all_kwargs={'allow_download': 'True'}
 )
+
+# Initialize ChromaDB with telemetry disabled
+try:
+    import chromadb
+    # Try to disable telemetry at the client level
+    chromadb.config.Settings(anonymized_telemetry=False)
+except:
+    pass
 
 db = Chroma(persist_directory=CHROMA_PATH,
             embedding_function=gpt4all_embeddings)

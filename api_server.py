@@ -5,12 +5,17 @@ This module provides REST API endpoints for external applications to interact
 with the RAG chatbot system that answers questions about Dev using PDF documents.
 """
 
+import os
+# Disable ChromaDB telemetry to prevent telemetry errors
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY_IMPL"] = "none"
+
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import uvicorn
-import os
 from datetime import datetime
 import logging
 
@@ -168,6 +173,64 @@ async def chat_with_dev(request: QueryRequest):
             detail=f"Internal server error: {str(e)}"
         )
 
+@app.api_route("/chatbot", methods=["GET", "POST"])
+async def chatbot_endpoint(
+    question: Optional[str] = None,
+    session_id: Optional[str] = None,
+    request_body: Optional[QueryRequest] = None
+):
+    """
+    Universal chatbot endpoint for frontend integration.
+    
+    Supports both GET and POST methods:
+    - GET: http://localhost:8057/chatbot?question=Your question here
+    - POST: Send JSON with {"question": "Your question", "session_id": "optional"}
+    
+    Perfect for frontend chatbot integration with clean responses.
+    """
+    try:
+        # Handle POST request with JSON body
+        if request_body:
+            question = request_body.question
+            session_id = request_body.session_id
+        
+        # Validate question
+        if not question or not question.strip():
+            return {
+                "success": False,
+                "error": "Question is required",
+                "message": "Please provide a question to ask about Dev"
+            }
+        
+        # Execute the RAG query
+        logger.info(f"Chatbot query: {question[:100]}...")
+        answer = execute_user_query(question)
+        
+        if not answer:
+            return {
+                "success": False,
+                "error": "No response generated",
+                "message": "Unable to generate a response. Please try again."
+            }
+        
+        # Return clean response for frontend
+        return {
+            "success": True,
+            "question": question,
+            "answer": answer,
+            "session_id": session_id,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        
+    except Exception as e:
+        logger.error(f"Chatbot endpoint error: {str(e)}")
+        return {
+            "success": False,
+            "error": "Internal server error",
+            "message": "Something went wrong. Please try again later.",
+            "details": str(e) if os.getenv("DEBUG") else None
+        }
+
 @app.get("/ask")
 async def ask_question_get(question: str, session_id: Optional[str] = None):
     """
@@ -264,11 +327,14 @@ async def general_exception_handler(request, exc):
     }
 
 if __name__ == "__main__":
+    # Get port from environment variable (for deployment platforms) or default to 8057
+    port = int(os.environ.get("PORT", 8057))
+    
     # Run the server
     uvicorn.run(
         "api_server:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=False,  # Disable reload in production
         log_level="info"
     )
